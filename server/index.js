@@ -114,11 +114,6 @@ app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
 
-// Test API route (for debugging)
-app.get("/api/analyze", (req, res) => {
-  res.send("API WORKING ✅");
-});
-
 // ===============================
 // ✅ MAIN API
 // ===============================
