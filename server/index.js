@@ -128,11 +128,12 @@ app.post("/api/analyze", async (req, res) => {
     const url = `https://www.amazon.in/dp/${asin}`;
 
     const { data } = await axios.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        "Accept-Language": "en-IN,en;q=0.9",
-      },
-    });
+  timeout: 15000,
+  headers: {
+    "User-Agent": "Mozilla/5.0",
+    "Accept-Language": "en-IN,en;q=0.9",
+  },
+});
 
     const $ = cheerio.load(data);
 
