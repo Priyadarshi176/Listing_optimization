@@ -13,13 +13,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Safe Gemini init
 const genAI = process.env.GEMINI_API_KEY
   ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
 
 // ===============================
-// ✅ RETRY FUNCTION
+// RETRY FUNCTION
 // ===============================
 async function retryWithBackoff(fn, retries = 3, delay = 2000) {
   try {
@@ -35,7 +34,7 @@ async function retryWithBackoff(fn, retries = 3, delay = 2000) {
 }
 
 // ===============================
-// ✅ GEMINI FUNCTION
+// GEMINI FUNCTION
 // ===============================
 async function generateWithGemini(title, description) {
   if (!genAI) {
@@ -47,26 +46,19 @@ async function generateWithGemini(title, description) {
     };
   }
 
-  // ⏳ delay (avoid rate limit)
-  await new Promise(res => setTimeout(res, 12000));
-
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-1.5-flash", // ✅ FIXED
   });
 
   const prompt = `
-Act as an E-commerce SEO Specialist. Your task is to generate a fully optimized product listing.
+Act as an E-commerce SEO Specialist. Return ONLY JSON.
 
-STRICTLY return ONLY valid JSON. Do NOT include markdown, backticks, or prose.
+Title: ${title}
+Description: ${description}
 
-Input Data:
-- Product Title: ${title}
-- Product Description: ${description || "NOT PROVIDED"}
-
-Output Schema:
 {
-  "titles": ["...", "...", "..."],
-  "bullets": ["...", "...", "...", "...", "..."],
+  "titles": ["...", "..."],
+  "bullets": ["...", "..."],
   "description": "...",
   "keywords": ["...", "..."]
 }
@@ -79,44 +71,29 @@ Output Schema:
 
     const text = result.response.text();
 
-    let cleanText = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
+    const cleanText = text.replace(/```json|```/g, "").trim();
 
-    const parsed = JSON.parse(cleanText);
-
-    return {
-      titles: parsed.titles || [],
-      bullets: parsed.bullets || [],
-      description: parsed.description || "",
-      keywords: parsed.keywords || [],
-    };
+    return JSON.parse(cleanText);
 
   } catch (err) {
     console.log("❌ Gemini Error:", err.message);
 
     return {
-      titles: ["Unable to generate title"],
+      titles: ["Error generating"],
       bullets: ["Try again"],
-      description: "AI failed. Please retry.",
+      description: "AI failed",
       keywords: [],
     };
   }
 }
 
 // ===============================
-// ✅ TEST ROUTES
+// ROUTES
 // ===============================
-
-// Root route
 app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
 
-// ===============================
-// ✅ MAIN API
-// ===============================
 app.post("/api/analyze", async (req, res) => {
   const { asin } = req.body;
 
@@ -128,35 +105,28 @@ app.post("/api/analyze", async (req, res) => {
     const url = `https://www.amazon.in/dp/${asin}`;
 
     const { data } = await axios.get(url, {
-  timeout: 15000,
-  headers: {
-    "User-Agent": "Mozilla/5.0",
-    "Accept-Language": "en-IN,en;q=0.9",
-  },
-});
+      timeout: 15000,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept-Language": "en-IN,en;q=0.9",
+        "Connection": "keep-alive",
+      },
+    });
 
     const $ = cheerio.load(data);
 
     const title = $("#productTitle").text().trim();
-
     const description =
       $("#feature-bullets").text().trim() ||
-      $("#productDescription").text().trim() ||
-      "No description";
+      $("#productDescription").text().trim();
 
-    const price =
-      $(".a-price-whole").first().text().trim() || "Not available";
-
-    const rating =
-      $(".a-icon-alt").first().text().trim() || "No rating";
-
-    const reviews =
-      $("#acrCustomerReviewText").text().trim() || "No reviews";
-
+    const price = $(".a-price-whole").first().text().trim();
+    const rating = $(".a-icon-alt").first().text().trim();
+    const reviews = $("#acrCustomerReviewText").text().trim();
     const image =
       $("#landingImage").attr("data-old-hires") ||
-      $("#landingImage").attr("src") ||
-      "";
+      $("#landingImage").attr("src");
 
     const aiResult = await generateWithGemini(title, description);
 
@@ -169,14 +139,11 @@ app.post("/api/analyze", async (req, res) => {
     console.error("❌ ERROR:", error.message);
 
     res.status(500).json({
-      error: "Failed to fetch product or AI busy. Try again.",
+      error: "Amazon blocked OR server error",
     });
   }
 });
 
-// ===============================
-// ✅ SERVER START
-// ===============================
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
