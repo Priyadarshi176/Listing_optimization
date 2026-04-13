@@ -116,6 +116,7 @@ Output Schema:
 app.post("/api/analyze", async (req, res) => {
   const { asin } = req.body;
 
+  
   if (!asin) {
     return res.status(400).json({ error: "ASIN required" });
   }
@@ -129,6 +130,10 @@ app.post("/api/analyze", async (req, res) => {
         "Accept-Language": "en-IN,en;q=0.9",
       },
     });
+
+      app.get("/api/analyze", (req, res) => {
+  res.send("API WORKING ✅");
+});
 
     const $ = cheerio.load(data);
 
