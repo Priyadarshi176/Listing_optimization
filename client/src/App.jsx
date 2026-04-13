@@ -13,7 +13,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/analyze", {
+      const res = await fetch("https://listing-optimization-bt4d.onrender.com", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ asin }),
@@ -106,7 +106,7 @@ ${aiResult.keywords?.join(", ")}
           <input
             value={asin}
             onChange={(e) => setAsin(e.target.value)}
-            placeholder="Enter Amazon ASIN (e.g. B0CKXM1C4B)"
+            placeholder="Enter Amazon ASIN (e.g. B0XXXXXXXXX)"
             className="flex-1 p-5 bg-white outline-none text-lg font-medium"
           />
           <button
