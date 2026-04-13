@@ -13,7 +13,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const res = await fetch("https://listing-optimization-bt4d.onrender.com", {
+      const res = await fetch("https://listing-optimization-bt4d.onrender.com/api/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ asin }),
