@@ -102,11 +102,11 @@ Output Schema:
 
     // ✅ Always return safe structure (prevents frontend crash)
     return {
-      title: "Unable to generate title",
-      bullets: ["Try again"],
-      description: "AI failed. Please retry.",
-      keywords: [],
-    };
+  titles: ["Unable to generate title"],
+  bullets: ["Try again"],
+  description: "AI failed. Please retry.",
+  keywords: [],
+};
   }
 }
 
