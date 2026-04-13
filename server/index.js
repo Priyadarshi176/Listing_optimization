@@ -13,7 +13,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// ✅ Safe Gemini init
+const genAI = process.env.GEMINI_API_KEY
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  : null;
 
 // ===============================
 // ✅ RETRY FUNCTION
@@ -32,11 +35,19 @@ async function retryWithBackoff(fn, retries = 3, delay = 2000) {
 }
 
 // ===============================
-// ✅ GEMINI FUNCTION (FINAL FIXED)
+// ✅ GEMINI FUNCTION
 // ===============================
 async function generateWithGemini(title, description) {
+  if (!genAI) {
+    return {
+      titles: ["API key missing"],
+      bullets: ["Check GEMINI_API_KEY"],
+      description: "AI not configured.",
+      keywords: [],
+    };
+  }
 
-  // ⏳ Rate limit safety
+  // ⏳ delay (avoid rate limit)
   await new Promise(res => setTimeout(res, 12000));
 
   const model = genAI.getGenerativeModel({
@@ -50,24 +61,11 @@ STRICTLY return ONLY valid JSON. Do NOT include markdown, backticks, or prose.
 
 Input Data:
 - Product Title: ${title}
-- Product Description: ${description || "NOT PROVIDED - Infer features/benefits from Title"}
-
-Optimization Requirements:
-1. Titles (Multiple Options): Provide 3 distinct title variations:
-   - Option 1: SEO Focus (Keyword-heavy, max 150 chars).
-   - Option 2: Brand/Click-Through Focus (Punchy and readable).
-   - Option 3: Technical Focus (Emphasizing specs/dimensions).
-2. Bullet Points: 5 high-converting bullets. Start each with an emoji or capitalized benefit.
-3. Description: If the input description was missing, generate a high-quality 200-word description based on the product type.
-4. Keywords: 10 backend search terms (comma-separated within the array).
+- Product Description: ${description || "NOT PROVIDED"}
 
 Output Schema:
 {
-  "titles": [
-    "SEO Focused Title...",
-    "Brand Focused Title...",
-    "Technical Focused Title..."
-  ],
+  "titles": ["...", "...", "..."],
   "bullets": ["...", "...", "...", "...", "..."],
   "description": "...",
   "keywords": ["...", "..."]
@@ -81,9 +79,6 @@ Output Schema:
 
     const text = result.response.text();
 
-    console.log("🧠 Gemini RAW:", text);
-
-    // 🔥 CLEAN RESPONSE
     let cleanText = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -91,26 +86,38 @@ Output Schema:
 
     const parsed = JSON.parse(cleanText);
 
-    // ✅ Ensure safe structure (VERY IMPORTANT)
     return {
-      titles: Array.isArray(parsed.titles) ? parsed.titles : [],
-      bullets: Array.isArray(parsed.bullets) ? parsed.bullets : [],
+      titles: parsed.titles || [],
+      bullets: parsed.bullets || [],
       description: parsed.description || "",
-      keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
+      keywords: parsed.keywords || [],
     };
 
   } catch (err) {
     console.log("❌ Gemini Error:", err.message);
 
-    // ✅ Always return safe structure (prevents frontend crash)
     return {
-  titles: ["Unable to generate title"],
-  bullets: ["Try again"],
-  description: "AI failed. Please retry.",
-  keywords: [],
-};
+      titles: ["Unable to generate title"],
+      bullets: ["Try again"],
+      description: "AI failed. Please retry.",
+      keywords: [],
+    };
   }
 }
+
+// ===============================
+// ✅ TEST ROUTES
+// ===============================
+
+// Root route
+app.get("/", (req, res) => {
+  res.send("Backend is running 🚀");
+});
+
+// Test API route (for debugging)
+app.get("/api/analyze", (req, res) => {
+  res.send("API WORKING ✅");
+});
 
 // ===============================
 // ✅ MAIN API
@@ -118,7 +125,6 @@ Output Schema:
 app.post("/api/analyze", async (req, res) => {
   const { asin } = req.body;
 
-  
   if (!asin) {
     return res.status(400).json({ error: "ASIN required" });
   }
@@ -128,14 +134,10 @@ app.post("/api/analyze", async (req, res) => {
 
     const { data } = await axios.get(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         "Accept-Language": "en-IN,en;q=0.9",
       },
     });
-
-      app.get("/api/analyze", (req, res) => {
-  res.send("API WORKING ✅");
-});
 
     const $ = cheerio.load(data);
 
@@ -160,7 +162,6 @@ app.post("/api/analyze", async (req, res) => {
       $("#landingImage").attr("src") ||
       "";
 
-    // 🔥 AI CALL
     const aiResult = await generateWithGemini(title, description);
 
     res.json({
@@ -178,10 +179,10 @@ app.post("/api/analyze", async (req, res) => {
 });
 
 // ===============================
+// ✅ SERVER START
+// ===============================
 const PORT = process.env.PORT || 5000;
-app.get("/", (req, res) => {
-  res.send("Backend is running 🚀");
-});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
