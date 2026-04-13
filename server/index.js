@@ -47,7 +47,7 @@ async function generateWithGemini(title, description) {
   }
 
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash", // ✅ FIXED
+    model: "gemini-2.5-flash", // ✅ FIXED
   });
 
   const prompt = `
