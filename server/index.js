@@ -51,14 +51,31 @@ async function generateWithGemini(title, description) {
   });
 
   const prompt = `
-Act as an E-commerce SEO Specialist. Return ONLY JSON.
+Act as an E-commerce SEO Specialist. Your task is to generate a fully optimized product listing.
 
-Title: ${title}
-Description: ${description}
+STRICTLY return ONLY valid JSON. Do NOT include markdown, backticks, or prose.
 
+Input Data:
+- Product Title: ${title}
+- Product Description: ${description || "NOT PROVIDED - Infer features/benefits from Title"}
+
+Optimization Requirements:
+1. Titles (Multiple Options): Provide 3 distinct title variations:
+   - Option 1: SEO Focus (Keyword-heavy, max 150 chars).
+   - Option 2: Brand/Click-Through Focus (Punchy and readable).
+   - Option 3: Technical Focus (Emphasizing specs/dimensions).
+2. Bullet Points: 5 high-converting bullets. Start each with an emoji or capitalized benefit.
+3. Description: If the input description was missing, generate a high-quality 200-word description based on the product type.
+4. Keywords: 10 backend search terms (comma-separated within the array).
+
+Output Schema:
 {
-  "titles": ["...", "..."],
-  "bullets": ["...", "..."],
+  "titles": [
+    "SEO Focused Title...",
+    "Brand Focused Title...",
+    "Technical Focused Title..."
+  ],
+  "bullets": ["...", "...", "...", "...", "..."],
   "description": "...",
   "keywords": ["...", "..."]
 }
